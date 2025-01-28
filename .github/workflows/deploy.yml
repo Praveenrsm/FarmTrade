@@ -1,0 +1,49 @@
+name: Deploy to IIS
+
+on:
+  push:
+    branches:
+      - main # Trigger the workflow on pushes to the main branch
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest
+
+    steps:
+    # Step 1: Checkout code
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    # Step 2: Setup .NET environment
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 7.0 # Replace with your .NET version
+
+    # Step 3: Restore dependencies
+    - name: Restore Dependencies
+      run: dotnet restore ./FarmTrade/FarmApi/FarmApi.csproj
+
+    # Step 4: Build the project
+    - name: Build Project
+      run: dotnet build ./FarmTrade/FarmApi/FarmApi.csproj --configuration Release --no-restore
+
+    # Step 5: Publish the project
+    - name: Publish Project
+      run: dotnet publish ./FarmTrade/FarmApi/FarmApi.csproj --configuration Release --output ./publish
+
+    # Step 6: Deploy to IIS using PowerShell
+    - name: Deploy to IIS
+      run: |
+        powershell -Command "
+        $username='${{ secrets.IIS_SERVER_USER }}';
+        $password='${{ secrets.IIS_SERVER_PASSWORD }}';
+        $secpasswd=ConvertTo-SecureString $password -AsPlainText -Force;
+        $credentials=New-Object System.Management.Automation.PSCredential($username, $secpasswd);
+        $session=New-PSSession -ComputerName ${{ secrets.IIS_SERVER_HOST }} -Credential $credentials;
+        Invoke-Command -Session $session -ScriptBlock {
+            param($sourcePath, $siteName)
+            Remove-Item -Recurse -Force 'C:\inetpub\wwwroot\$siteName\*';
+            Copy-Item -Path $sourcePath\* -Destination 'C:\inetpub\wwwroot\$siteName' -Recurse;
+        } -ArgumentList './publish', 'FarmApi';
+        Remove-PSSession $session;"
