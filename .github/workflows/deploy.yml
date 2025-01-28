@@ -36,11 +36,11 @@ jobs:
     - name: Deploy to IIS
       run: |
         powershell -Command "
-        $username='${{ secrets.IIS_SERVER_USER }}';
-        $password='${{ secrets.IIS_SERVER_PASSWORD }}';
+        $username='Administrator';
+        $password='Praveen0077$$';
         $secpasswd=ConvertTo-SecureString $password -AsPlainText -Force;
         $credentials=New-Object System.Management.Automation.PSCredential($username, $secpasswd);
-        $session=New-PSSession -ComputerName ${{ secrets.IIS_SERVER_HOST }} -Credential $credentials;
+        $session=New-PSSession -ComputerName localhost -Credential $credentials;
         Invoke-Command -Session $session -ScriptBlock {
             param($sourcePath, $siteName)
             Remove-Item -Recurse -Force 'C:\inetpub\wwwroot\$siteName\*';
